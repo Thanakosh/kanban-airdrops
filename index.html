@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>airdropboard</title>
+    <link rel="icon" type="image/png" href="input_file_0.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Botão de alternância de tema -->
+    <button class="theme-toggle" id="theme-toggle">
+        <i class="fas fa-moon" id="theme-icon"></i>
+    </button>
+    <!-- Seletor de idioma minimalista com bandeiras -->
+    <div id="language-switcher" class="language-switcher">
+        <button class="lang-btn" data-lang="pt" title="Português"><img src="https://flagcdn.com/w20/br.png" alt="PT"></button>
+        <button class="lang-btn" data-lang="en" title="English"><img src="https://flagcdn.com/w20/us.png" alt="EN"></button>
+        <button class="lang-btn" data-lang="es" title="Español"><img src="https://flagcdn.com/w20/es.png" alt="ES"></button>
+        <button class="lang-btn" data-lang="zh" title="中文"><img src="https://flagcdn.com/w20/cn.png" alt="ZH"></button>
+    </div>
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+            <div class="d-flex align-items-center"> <!-- Wrapper para logo e título -->
+                <!-- <img src="input_file_0.png" alt="Logotipo Gerenciador de Airdrops" id="app-logo"> -->
+                <h2 id="main-title" class="ms-2 mb-0">airdropboard <span class="badge bg-primary" id="main-pro-badge">Pro</span></h2>
+            </div>
+            <div>
+                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#dashboardModal" id="dashboard-btn">
+                    <i class="fas fa-chart-line"></i> Dashboard
+                </button>
+                <div id="language-switcher" class="language-switcher-inline d-inline-flex align-items-center ms-2">
+                    <button class="lang-btn" data-lang="pt" title="Português"><img src="https://flagcdn.com/w20/br.png" alt="PT"></button>
+                    <button class="lang-btn" data-lang="en" title="English"><img src="https://flagcdn.com/w20/us.png" alt="EN"></button>
+                    <button class="lang-btn" data-lang="es" title="Español"><img src="https://flagcdn.com/w20/es.png" alt="ES"></button>
+                    <button class="lang-btn" data-lang="zh" title="中文"><img src="https://flagcdn.com/w20/cn.png" alt="ZH"></button>
+                </div>
+                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#calendarModal" id="calendar-btn">
+                    <i class="fas fa-calendar-alt"></i> Calendário
+                </button>
+            </div>
+        </div>
+
+        <!-- Barra de filtros e busca -->
+        <div class="card bg-secondary bg-opacity-10 mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" id="busca" class="form-control" placeholder="Buscar...">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="filtro-status" class="form-select">
+                            <option value="">Status</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Concluído">Concluído</option>
+                            <option value="Aguardando">Aguardando</option>
+                            <option value="Rejeitado">Rejeitado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="filtro-prioridade" class="form-select">
+                            <option value="">Prioridade</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Média">Média</option>
+                            <option value="Baixa">Baixa</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="btn-group w-100">
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalColuna" id="new-column-btn">
+                                <i class="fas fa-plus"></i> Nova Coluna
+                            </button>
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalCartao" id="new-card-btn">
+                                <i class="fas fa-plus"></i> Novo Cartão
+                            </button>
+                            <button class="btn btn-info" onclick="exportarKanban()">
+                                <i class="fas fa-file-export"></i>
+                            </button>
+                            <input type="file" id="importar-arquivo" style="display:none" accept="application/json" onchange="importarKanban(event)">
+                            <button class="btn btn-info" onclick="document.getElementById('importar-arquivo').click()">
+                                <i class="fas fa-file-import"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quadro Kanban -->
+        <div class="board" id="kanban-board"></div>
+
+        <!-- Contêiner de Toast -->
+        <div id="toast-container"></div>
+    </div>
+
+    <!-- Modal de Coluna -->
+    <div class="modal fade" id="modalColuna" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalColunaTitle">Nova Coluna</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-coluna">
+                        <input type="hidden" id="coluna-id">
+                        <div class="mb-3">
+                            <label for="nome-coluna" class="form-label">Nome da Coluna</label>
+                            <input type="text" class="form-control" id="nome-coluna" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="cor-coluna" class="form-label">Cor da Coluna</label>
+                            <select class="form-select" id="cor-coluna">
+                                <option value="#2563eb">Azul</option>
+                                <option value="#16a34a">Verde</option>
+                                <option value="#f59e42">Laranja</option>
+                                <option value="#ef4444">Vermelho</option>
+                                <option value="#a855f7">Roxo</option>
+                                <option value="#06b6d4">Ciano</option>
+                                <option value="#6b7280">Cinza</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Salvar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Cartão -->
+    <div class="modal fade" id="modalCartao" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalCartaoLabel">Novo Cartão</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-modal-cartao">
+                        <input type="hidden" id="modal-cartao-id">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label for="modal-cartao-titulo" class="form-label">Título</label>
+                                <input type="text" class="form-control" id="modal-cartao-titulo" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="modal-cartao-coluna-id" class="form-label">Coluna</label>
+                                <select class="form-select" id="modal-cartao-coluna-id" required></select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="modal-cartao-descricao" class="form-label">Descrição</label>
+                                <textarea class="form-control" id="modal-cartao-descricao" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="modal-cartao-status" class="form-label">Status</label>
+                                <select class="form-select" id="modal-cartao-status">
+                                    <option value="Em andamento">Em andamento</option>
+                                    <option value="Concluído">Concluído</option>
+                                    <option value="Aguardando">Aguardando</option>
+                                    <option value="Rejeitado">Rejeitado</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="modal-cartao-prioridade" class="form-label">Prioridade</label>
+                                <select class="form-select" id="modal-cartao-prioridade">
+                                    <option value="Alta">Alta</option>
+                                    <option value="Média">Média</option>
+                                    <option value="Baixa">Baixa</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="modal-cartao-prazo" class="form-label">Prazo</label>
+                                <input type="date" class="form-control" id="modal-cartao-prazo">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="modal-cartao-link" class="form-label">Link do Projeto</label>
+                                <input type="url" class="form-control" id="modal-cartao-link" value="http://">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="modal-cartao-tags" class="form-label">Tags (separadas por vírgula)</label>
+                                <input type="text" class="form-control" id="modal-cartao-tags" placeholder="ex: ethereum, defi, nft">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Checklist</label>
+                            <div id="checklist-container" class="mb-2"></div>
+                            <div class="input-group">
+                                <input type="text" id="novo-checklist-item" class="form-control" placeholder="Nova tarefa...">
+                                <button type="button" class="btn btn-outline-primary" id="add-checklist-item">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="modal-cartao-obs" class="form-label">Observações</label>
+                            <textarea class="form-control" id="modal-cartao-obs" rows="2"></textarea>
+                        </div>
+                        <div class="text-end">
+                            <button type="button" class="btn btn-outline-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-success">Salvar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Dashboard -->
+    <div class="modal fade" id="dashboardModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header">
+                    <h5 class="modal-title">Dashboard</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="stats-row mb-4">
+                        <div class="stat-card bg-primary bg-opacity-25">
+                            <div class="stat-value" id="stat-total">0</div>
+                            <div class="stat-label">Total de Airdrops</div>
+                        </div>
+                        <div class="stat-card bg-success bg-opacity-25">
+                            <div class="stat-value" id="stat-concluidos">0</div>
+                            <div class="stat-label">Concluídos</div>
+                        </div>
+                        <div class="stat-card bg-warning bg-opacity-25">
+                            <div class="stat-value" id="stat-andamento">0</div>
+                            <div class="stat-label">Em Andamento</div>
+                        </div>
+                        <div class="stat-card bg-danger bg-opacity-25">
+                            <div class="stat-value" id="stat-atrasados">0</div>
+                            <div class="stat-label">Atrasados</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Distribuição por Status</h5>
+                            <canvas id="status-chart" height="250"></canvas>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Distribuição por Prioridade</h5>
+                            <canvas id="priority-chart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Calendário -->
+    <div class="modal fade" id="calendarModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header">
+                    <h5 class="modal-title">Calendário de Prazos</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div class="modal fade" id="confirmationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmationTitle">Confirmação</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmationMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirmationConfirm">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script src="kanban.js"></script>
+</body>
+</html> 
+
+

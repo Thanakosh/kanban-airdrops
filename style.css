@@ -1,0 +1,325 @@
+/* Variáveis globais de tema */
+:root {
+    --bg-primary-color: #181824;
+    --bg-secondary-color: #23243a;
+    --text-primary-color: #fff;
+    --text-secondary-color: #e0e0e0;
+    --card-bg-color: #1d1e30;
+    --gradient-start-color: #181824;
+    --gradient-end-color: #23243a;
+    --link-color: #2563eb;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    --shadow-md: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+    --modal-bg-color: var(--bg-secondary-color);
+    --modal-text-color: var(--text-primary-color);
+    --input-bg-color: var(--card-bg-color);
+    --input-border-color: #444;
+    --input-text-color: var(--text-primary-color);
+    --theme-toggle-bg: var(--bg-secondary-color);
+    --theme-toggle-border: var(--text-secondary-color);
+    --theme-toggle-icon-color: var(--text-primary-color);
+}
+[data-theme="light"] {
+    --bg-primary-color: #f0f2f5;
+    --bg-secondary-color: #ffffff;
+    --text-primary-color: #1a1a2e;
+    --text-secondary-color: #4a4a6a;
+    --card-bg-color: #ffffff;
+    --gradient-start-color: #f8f9fa;
+    --gradient-end-color: #e9ecef;
+    --link-color: #007bff;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.12);
+    --shadow-md: 0 3px 6px rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.16);
+    --modal-bg-color: #ffffff;
+    --modal-text-color: #1a1a2e;
+    --input-bg-color: #f8f9fa;
+    --input-border-color: #ced4da;
+    --input-text-color: #495057;
+    --theme-toggle-bg: #ffffff;
+    --theme-toggle-border: #ced4da;
+    --theme-toggle-icon-color: #495057;
+}
+
+body {
+    background: linear-gradient(135deg, var(--gradient-start-color) 0%, var(--gradient-end-color) 100%) !important;
+    color: var(--text-primary-color) !important;
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Estilos base usando variáveis */
+.board {
+    display: flex;
+    gap: 24px;
+    overflow-x: auto;
+    padding: 40px 24px 80px 24px;
+}
+.trello-column {
+    border-radius: 14px;
+    min-width: 320px;
+    max-width: 340px;
+    padding: 18px 12px 18px 12px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+    background: var(--bg-secondary-color);
+}
+.trello-column .column-header {
+    cursor: grab;
+    margin-bottom: 16px;
+}
+.trello-column .column-title {
+    font-size: 1.15rem;
+    font-weight: bold;
+    color: var(--text-primary-color);
+    letter-spacing: 0.5px;
+}
+.trello-card {
+    background: var(--card-bg-color);
+    border-radius: 8px;
+    margin-bottom: 14px;
+    padding: 12px 10px 10px 10px;
+    color: var(--text-primary-color);
+    box-shadow: var(--shadow-sm);
+    border-left: 7px solid #444;
+    transition: box-shadow 0.2s;
+    cursor: grab;
+}
+.trello-card:hover {
+    box-shadow: 0 4px 16px #0006;
+}
+.trello-column.avisos      { border-top: 6px solid #ef4444; }
+.trello-column.diaria      { border-top: 6px solid #2563eb; }
+.trello-column.semanal     { border-top: 6px solid #16a34a; }
+.trello-column.quinzenal   { border-top: 6px solid #f59e42; }
+.trello-column.mensal      { border-top: 6px solid #fbbf24; }
+.trello-column.trimestral  { border-top: 6px solid #06b6d4; }
+.trello-column.semestral   { border-top: 6px solid #22d3ee; }
+.trello-column.novos       { border-top: 6px solid #a855f7; }
+.trello-card.red      { border-left: 7px solid #ef4444; }
+.trello-card.orange   { border-left: 7px solid #f59e42; }
+.trello-card.yellow   { border-left: 7px solid #fbbf24; }
+.trello-card.green    { border-left: 7px solid #16a34a; }
+.trello-card.blue     { border-left: 7px solid #2563eb; }
+.trello-card.cyan     { border-left: 7px solid #06b6d4; }
+.trello-card.purple   { border-left: 7px solid #a855f7; }
+.trello-card.gray     { border-left: 7px solid #6b7280; }
+.btn-sm { font-size: 0.9em; padding: 2px 8px; margin-left: 2px; }
+@media (max-width: 500px) {
+    .board {
+        padding: 10px 2px 60px 2px;
+        gap: 8px;
+    }
+    .trello-column {
+        min-width: 220px;
+        max-width: 98vw;
+        padding: 10px 4px 10px 4px;
+    }
+    .trello-card {
+        padding: 8px 4px 8px 4px;
+        font-size: 0.97em;
+    }
+    .btn, .btn-sm {
+        font-size: 0.95em;
+        padding: 2px 6px;
+    }
+    input, select, textarea {
+        font-size: 1em;
+    }
+}
+.drag-over-card { outline: 2px dashed #fbbf24; background: #23243a !important; }
+.drag-over-column { outline: 2px dashed #f59e42; background: #2a2b44 !important; }
+.column-dragging { opacity: 0.6; }
+.card-dragging { opacity: 0.6; }
+.column-cards-container { min-height: 50px; padding-bottom: 10px; }
+.column-drop-indicator {
+    height: 14px;
+    background-color: #2563eb;
+    border-radius: 7px;
+    margin: 0 -12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.column-drop-indicator.visible {
+    opacity: 0.7;
+}
+.card-drop-placeholder {
+    height: 80px;
+    background-color: #2a2b44;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    border: 2px dashed #f59e42;
+}
+#form-coluna {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  margin-bottom: 4px !important;
+  padding: 0 !important;
+}
+#form-coluna input, #form-coluna button {
+  box-shadow: none !important;
+  background: #23243a !important;
+  border: 1px solid #444 !important;
+  color: #fff !important;
+}
+
+/* Estilos para drag & drop */
+.card-dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+}
+
+.column-dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+}
+
+.drag-over-column {
+    background-color: rgba(38, 40, 66, 0.6) !important;
+    border: 2px dashed #f59e42;
+}
+
+.drag-over-top {
+    border-top: 2px solid #2563eb;
+}
+
+.column-cards-container {
+    min-height: 50px;
+    padding: 10px;
+    transition: background-color 0.2s ease;
+}
+
+.trello-column {
+    transition: transform 0.2s ease;
+}
+
+.trello-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Melhorias visuais para feedback */
+.trello-card:active {
+    cursor: grabbing;
+    transform: scale(1.02);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+}
+
+.column-header:active {
+    cursor: grabbing;
+}
+
+/* Botão de tema */
+.theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1001;
+    background: var(--bg-secondary-color);
+    border: 1px solid var(--text-secondary-color);
+    color: var(--text-primary-color);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+}
+
+/* CSS do logotipo */
+#app-logo {
+    height: 32px;
+    width: auto;
+}
+
+#modalColuna .modal-content {
+    background-color: var(--bg-secondary-color);
+    color: var(--text-primary-color);
+}
+#modalColuna .modal-header {
+    border-bottom: 1px solid var(--text-secondary-color);
+}
+#modalColuna .btn-close-white {
+    /* O Bootstrap pode ter sobrescrita para isso; pode ser necessário ajustar */
+    filter: invert(1);
+}
+#form-coluna input, #form-coluna select, #form-coluna button {
+  box-shadow: none !important;
+  background: var(--card-bg-color) !important;
+  border: 1px solid var(--text-secondary-color) !important;
+  color: var(--text-primary-color) !important;
+}
+
+/* Seletor de idioma minimalista com bandeiras */
+.language-switcher {
+    position: fixed;
+    top: 20px;
+    right: 140px;
+    z-index: 1100;
+    display: flex;
+    gap: 6px;
+    background: transparent;
+}
+.lang-btn {
+    background: var(--input-bg-color);
+    border: 1px solid var(--input-border-color);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: border 0.2s, box-shadow 0.2s;
+    box-shadow: none;
+    outline: none;
+}
+.lang-btn img {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+.lang-btn.active, .lang-btn:focus {
+    border: 2px solid var(--theme-toggle-border);
+    box-shadow: 0 0 0 2px var(--theme-toggle-border);
+}
+
+/* Remover o antigo seletor */
+#language-select { display: none !important; }
+
+.language-switcher-inline {
+    gap: 6px;
+    margin-left: 8px;
+}
+.lang-btn {
+    background: var(--input-bg-color);
+    border: 1px solid var(--input-border-color);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: border 0.2s, box-shadow 0.2s;
+    box-shadow: none;
+    outline: none;
+}
+.lang-btn img {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+.lang-btn.active, .lang-btn:focus {
+    border: 2px solid var(--theme-toggle-border);
+    box-shadow: 0 0 0 2px var(--theme-toggle-border);
+}
+/* Remover seletor fixo do topo */
+.language-switcher { display: none !important; } 
