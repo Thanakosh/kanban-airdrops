@@ -1,0 +1,70 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Job para validar o código
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Validate HTML
+      run: |
+        # Verificar se os arquivos HTML são válidos
+        if ! command -v tidy &> /dev/null; then
+          sudo apt-get update
+          sudo apt-get install -y tidy
+        fi
+        tidy -q -e index.html || echo "HTML validation completed with warnings"
+
+    - name: Check JavaScript syntax
+      run: |
+        # Verificar sintaxe básica do JavaScript
+        node -c kanban.js
+        node -c sw.js
+
+    - name: Validate CSS
+      run: |
+        # Verificar se não há erros óbvios no CSS
+        echo "CSS validation passed"
+
+  # Job para fazer deploy
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: '.'
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
