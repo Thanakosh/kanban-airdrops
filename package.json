@@ -1,0 +1,39 @@
+{
+  "name": "airdropboard",
+  "version": "1.0.0",
+  "description": "Gerenciador de Airdrops Kanban - Uma aplicação web para organizar e rastrear participações em airdrops de criptomoedas",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "lint": "eslint *.js --fix",
+    "format": "prettier --write *.js *.css *.html",
+    "validate": "npm run lint && npm run format",
+    "build": "echo 'Build completed - static files ready for deployment'",
+    "test": "echo 'No tests specified yet'"
+  },
+  "keywords": [
+    "kanban",
+    "airdrop",
+    "cryptocurrency",
+    "blockchain",
+    "project-management",
+    "web-app"
+  ],
+  "author": "Thanakosh",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Thanakosh/kanban-airdrops.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Thanakosh/kanban-airdrops/issues"
+  },
+  "homepage": "https://github.com/Thanakosh/kanban-airdrops#readme",
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
