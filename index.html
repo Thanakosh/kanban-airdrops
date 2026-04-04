@@ -3,7 +3,8 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>airdropboard</title>
+    <title>AirdropBoard</title>
+    <meta name="description" content="Quadro Kanban local-first para organizar oportunidades, tarefas e prazos de airdrops.">
     <link rel="icon" type="image/png" href="input_file_0.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
@@ -13,94 +14,102 @@
     <script src="notifications.js"></script>
 </head>
 <body>
-    <!-- Botão de alternância de tema -->
     <button class="theme-toggle" id="theme-toggle">
         <i class="fas fa-moon" id="theme-icon"></i>
     </button>
-    <!-- Seletor de idioma minimalista com bandeiras -->
-    <div id="language-switcher" class="language-switcher">
-        <button class="lang-btn" data-lang="pt" title="Português"><img src="https://flagcdn.com/w20/br.png" alt="PT"></button>
-        <button class="lang-btn" data-lang="en" title="English"><img src="https://flagcdn.com/w20/us.png" alt="EN"></button>
-        <button class="lang-btn" data-lang="es" title="Español"><img src="https://flagcdn.com/w20/es.png" alt="ES"></button>
-        <button class="lang-btn" data-lang="zh" title="中文"><img src="https://flagcdn.com/w20/cn.png" alt="ZH"></button>
-    </div>
 
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
-            <div class="d-flex align-items-center"> <!-- Wrapper para logo e título -->
-                <!-- <img src="input_file_0.png" alt="Logotipo Gerenciador de Airdrops" id="app-logo"> -->
-                <h2 id="main-title" class="ms-2 mb-0">airdropboard <span class="badge bg-primary" id="main-pro-badge">Pro</span></h2>
+    <main class="app-shell container">
+        <header class="app-header">
+            <div class="app-intro">
+                <p class="app-kicker" id="app-kicker">Fluxo local para acompanhar airdrops</p>
+                <h1 id="main-title" class="app-title">AirdropBoard <span class="badge text-bg-light" id="main-pro-badge">Local-first</span></h1>
+                <p class="app-subtitle" id="main-subtitle">Organize oportunidades, tarefas e prazos em um quadro simples salvo no próprio navegador.</p>
             </div>
-            <div>
-                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#dashboardModal" id="dashboard-btn">
-                    <i class="fas fa-chart-line"></i> Dashboard
-                </button>
-                <div id="language-switcher" class="language-switcher-inline d-inline-flex align-items-center ms-2">
+
+            <div class="app-actions">
+                <div class="language-switcher-inline d-inline-flex align-items-center" id="language-switcher-inline">
                     <button class="lang-btn" data-lang="pt" title="Português"><img src="https://flagcdn.com/w20/br.png" alt="PT"></button>
                     <button class="lang-btn" data-lang="en" title="English"><img src="https://flagcdn.com/w20/us.png" alt="EN"></button>
                     <button class="lang-btn" data-lang="es" title="Español"><img src="https://flagcdn.com/w20/es.png" alt="ES"></button>
                     <button class="lang-btn" data-lang="zh" title="中文"><img src="https://flagcdn.com/w20/cn.png" alt="ZH"></button>
                 </div>
+                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#dashboardModal" id="dashboard-btn">
+                    <i class="fas fa-chart-line"></i> Dashboard
+                </button>
                 <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#calendarModal" id="calendar-btn">
                     <i class="fas fa-calendar-alt"></i> Calendário
                 </button>
             </div>
-        </div>
+        </header>
 
-        <!-- Barra de filtros e busca -->
-        <div class="card bg-secondary bg-opacity-10 mb-4">
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            <input type="text" id="busca" class="form-control" placeholder="Buscar...">
+        <section class="workspace-overview" aria-label="Resumo do quadro">
+            <div class="workspace-stat">
+                <span id="summary-columns-label">Colunas ativas</span>
+                <strong id="summary-columns">0</strong>
+            </div>
+            <div class="workspace-stat">
+                <span id="summary-active-label">Cards ativos</span>
+                <strong id="summary-active">0</strong>
+            </div>
+            <div class="workspace-stat">
+                <span id="summary-overdue-label">Atrasados</span>
+                <strong id="summary-overdue">0</strong>
+            </div>
+        </section>
+
+        <section class="workspace-toolbar">
+            <div class="card bg-secondary bg-opacity-10 mb-4 toolbar-surface">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-lg-4">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" id="busca" class="form-control" placeholder="Buscar...">
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-2">
-                        <select id="filtro-status" class="form-select">
-                            <option value="">Status</option>
-                            <option value="Em andamento">Em andamento</option>
-                            <option value="Concluído">Concluído</option>
-                            <option value="Aguardando">Aguardando</option>
-                            <option value="Rejeitado">Rejeitado</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <select id="filtro-prioridade" class="form-select">
-                            <option value="">Prioridade</option>
-                            <option value="Alta">Alta</option>
-                            <option value="Média">Média</option>
-                            <option value="Baixa">Baixa</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="btn-group w-100">
-                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalColuna" id="new-column-btn">
-                                <i class="fas fa-plus"></i> Nova Coluna
-                            </button>
-                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalCartao" id="new-card-btn">
-                                <i class="fas fa-plus"></i> Novo Cartão
-                            </button>
-                            <button class="btn btn-info" onclick="exportarKanban()">
-                                <i class="fas fa-file-export"></i>
-                            </button>
-                            <input type="file" id="importar-arquivo" style="display:none" accept="application/json" onchange="importarKanban(event)">
-                            <button class="btn btn-info" onclick="document.getElementById('importar-arquivo').click()">
-                                <i class="fas fa-file-import"></i>
-                            </button>
+                        <div class="col-lg-2">
+                            <select id="filtro-status" class="form-select">
+                                <option value="">Status</option>
+                                <option value="Em andamento">Em andamento</option>
+                                <option value="Concluído">Concluído</option>
+                                <option value="Aguardando">Aguardando</option>
+                                <option value="Rejeitado">Rejeitado</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-2">
+                            <select id="filtro-prioridade" class="form-select">
+                                <option value="">Prioridade</option>
+                                <option value="Alta">Alta</option>
+                                <option value="Média">Média</option>
+                                <option value="Baixa">Baixa</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="toolbar-actions">
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalColuna" id="new-column-btn">
+                                    <i class="fas fa-plus"></i> Nova Coluna
+                                </button>
+                                <button type="button" class="btn btn-success" id="new-card-btn">
+                                    <i class="fas fa-plus"></i> Novo Cartão
+                                </button>
+                                <button class="btn btn-info" onclick="exportarKanban()" id="export-btn">
+                                    <i class="fas fa-file-export"></i>
+                                </button>
+                                <input type="file" id="importar-arquivo" style="display:none" accept="application/json" onchange="importarKanban(event)">
+                                <button class="btn btn-info" onclick="document.getElementById('importar-arquivo').click()" id="import-btn">
+                                    <i class="fas fa-file-import"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Quadro Kanban -->
         <div class="board" id="kanban-board"></div>
 
-        <!-- Contêiner de Toast -->
         <div id="toast-container"></div>
-    </div>
+    </main>
 
     <!-- Modal de Coluna -->
     <div class="modal fade" id="modalColuna" tabindex="-1" aria-hidden="true">
@@ -147,6 +156,7 @@
                 <div class="modal-body">
                     <form id="form-modal-cartao">
                         <input type="hidden" id="modal-cartao-id">
+                        <input type="hidden" id="modal-cartao-coluna-original-id">
                         <div class="row mb-3">
                             <div class="col-md-8">
                                 <label for="modal-cartao-titulo" class="form-label">Título</label>
@@ -189,7 +199,7 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="modal-cartao-link" class="form-label">Link do Projeto</label>
-                                <input type="url" class="form-control" id="modal-cartao-link" value="http://">
+                                <input type="url" class="form-control" id="modal-cartao-link" placeholder="https://projeto.xyz">
                             </div>
                             <div class="col-md-6">
                                 <label for="modal-cartao-tags" class="form-label">Tags (separadas por vírgula)</label>

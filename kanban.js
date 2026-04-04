@@ -59,6 +59,70 @@ class KanbanModel {
     }
 
     /**
+     * Cria um quadro inicial com colunas padrão para o primeiro uso
+     * @returns {Boolean} Se o quadro foi criado
+     */
+    criarQuadroInicial() {
+        if (this.dados.length) return false;
+
+        this.dados = [
+            { id: 1, name: 'Descobertos', color: '#38bdf8', order: 1, cards: [] },
+            { id: 2, name: 'Validando', color: '#8b5cf6', order: 2, cards: [] },
+            { id: 3, name: 'Em andamento', color: '#f59e0b', order: 3, cards: [] },
+            { id: 4, name: 'Concluídos', color: '#22c55e', order: 4, cards: [] }
+        ];
+
+        this.salvarDados();
+        return true;
+    }
+
+    /**
+     * Normaliza links antes de salvar
+     * @param {String} link Link informado pelo usuário
+     * @returns {String} Link normalizado
+     */
+    normalizarLink(link) {
+        const linkLimpo = (link || '').trim();
+
+        if (!linkLimpo || linkLimpo === 'http://' || linkLimpo === 'https://') {
+            return '';
+        }
+
+        return linkLimpo;
+    }
+
+    /**
+     * Converte os dados do formulário para o formato interno do cartão
+     * @param {Object} cartao Dados de entrada
+     * @returns {Object} Dados normalizados
+     */
+    normalizarCartao(cartao) {
+        return {
+            title: (cartao.titulo || cartao.title || '').trim(),
+            description: (cartao.descricao || cartao.description || '').trim(),
+            status: cartao.status || 'Em andamento',
+            priority: cartao.prioridade || cartao.priority || 'Média',
+            prazo: cartao.prazo || null,
+            link: this.normalizarLink(cartao.link),
+            tags: Array.isArray(cartao.tags)
+                ? cartao.tags
+                    .map(tag => String(tag).trim())
+                    .filter(Boolean)
+                : [],
+            checklist: Array.isArray(cartao.checklist)
+                ? cartao.checklist
+                    .map((item, index) => ({
+                        id: item.id || index + 1,
+                        text: String(item.text || '').trim(),
+                        done: Boolean(item.done)
+                    }))
+                    .filter(item => item.text)
+                : [],
+            obs: (cartao.obs || '').trim()
+        };
+    }
+
+    /**
      * Adiciona um listener para mudanças nos dados
      * @param {Function} callback Função a ser chamada quando os dados mudarem
      */
@@ -150,17 +214,10 @@ class KanbanModel {
         const coluna = this.dados.find(c => c.id === cartao.colunaId);
         if (coluna) {
             const novoId = this.gerarNovoIdCartao();
+            const dadosNormalizados = this.normalizarCartao(cartao);
             const novoCartao = {
                 id: novoId,
-                title: cartao.titulo,
-                description: cartao.descricao || "",
-                status: cartao.status || "Em andamento",
-                priority: cartao.prioridade || "Média",
-                prazo: cartao.prazo || null,
-                link: cartao.link || "",
-                tags: cartao.tags || [],
-                checklist: cartao.checklist || [],
-                obs: cartao.obs || "",
+                ...dadosNormalizados,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
@@ -177,20 +234,31 @@ class KanbanModel {
      * @param {Number} cartaoId ID do cartão
      * @param {Object} dadosCartao Novos dados
      */
-    editarCartao(colunaId, cartaoId, dadosCartao) {
-        const coluna = this.dados.find(c => c.id === colunaId);
-        if (coluna) {
-            const cartao = coluna.cards.find(c => c.id === cartaoId);
-            if (cartao) {
-                Object.assign(cartao, {
-                    ...dadosCartao,
-                    updated_at: new Date().toISOString()
-                });
-                this.salvarDados();
-                return true;
-            }
+    editarCartao(colunaOrigemId, cartaoId, dadosCartao, colunaDestinoId = colunaOrigemId) {
+        const colunaOrigem = this.dados.find(c => c.id === colunaOrigemId);
+        const colunaDestino = this.dados.find(c => c.id === colunaDestinoId);
+
+        if (!colunaOrigem || !colunaDestino) return false;
+
+        const indiceCartao = colunaOrigem.cards.findIndex(c => c.id === cartaoId);
+        if (indiceCartao === -1) return false;
+
+        const cartaoAtual = colunaOrigem.cards[indiceCartao];
+        const cartaoAtualizado = {
+            ...cartaoAtual,
+            ...this.normalizarCartao(dadosCartao),
+            updated_at: new Date().toISOString()
+        };
+
+        if (colunaOrigemId === colunaDestinoId) {
+            colunaOrigem.cards[indiceCartao] = cartaoAtualizado;
+        } else {
+            colunaOrigem.cards.splice(indiceCartao, 1);
+            colunaDestino.cards.push(cartaoAtualizado);
         }
-        return false;
+
+        this.salvarDados();
+        return true;
     }
 
     /**
@@ -241,6 +309,7 @@ class KanbanModel {
      */
     getEstatisticas() {
         const today = new Date();
+        today.setHours(0, 0, 0, 0);
         const cards = this.dados.flatMap(c => c.cards);
 
         const porStatus = {
@@ -256,6 +325,7 @@ class KanbanModel {
             'Baixa': 0
         };
 
+        let ativos = 0;
         let atrasados = 0;
 
         cards.forEach(card => {
@@ -265,9 +335,14 @@ class KanbanModel {
             // Contagem por prioridade
             porPrioridade[card.priority] = (porPrioridade[card.priority] || 0) + 1;
 
+            if (!['Concluído', 'Rejeitado'].includes(card.status)) {
+                ativos++;
+            }
+
             // Contagem de atrasados
             if (card.prazo && card.status !== 'Concluído') {
                 const prazoDate = new Date(card.prazo);
+                prazoDate.setHours(0, 0, 0, 0);
                 if (prazoDate < today) atrasados++;
             }
         });
@@ -276,6 +351,7 @@ class KanbanModel {
             total: cards.length,
             porStatus,
             porPrioridade,
+            ativos,
             concluidos: porStatus['Concluído'] || 0,
             emAndamento: porStatus['Em andamento'] || 0,
             atrasados
@@ -352,9 +428,14 @@ class KanbanView {
         document.getElementById('form-modal-cartao').addEventListener('submit', (e) => {
             e.preventDefault();
             const id = document.getElementById('modal-cartao-id').value;
-            const colunaId = parseInt(document.getElementById('modal-cartao-coluna-id').value);
+            const colunaId = parseInt(document.getElementById('modal-cartao-coluna-id').value, 10);
+            const colunaOriginalId = parseInt(
+                document.getElementById('modal-cartao-coluna-original-id').value || colunaId,
+                10
+            );
             const titulo = document.getElementById('modal-cartao-titulo').value.trim();
             const status = document.getElementById('modal-cartao-status').value;
+
             // Validação mínima: título, coluna e status
             if (!titulo || !colunaId || !status) {
                 this.exibirToast('Preencha os campos obrigatórios: Título, Coluna e Status.', 'danger');
@@ -394,12 +475,12 @@ class KanbanView {
             };
 
             if (id) {
-                this.controller.editarCartao(colunaId, parseInt(id), cartao);
+                this.controller.editarCartao(colunaOriginalId, parseInt(id, 10), cartao, colunaId);
             } else {
                 this.controller.adicionarCartao(cartao);
             }
 
-            bootstrap.Modal.getInstance(document.getElementById('modalCartao')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('modalCartao'))?.hide();
         });
 
         // Adicionar item ao checklist
@@ -411,10 +492,30 @@ class KanbanView {
             }
         });
 
+        document.getElementById('novo-checklist-item').addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter') return;
+
+            event.preventDefault();
+            document.getElementById('add-checklist-item').click();
+        });
+
         // Filtros
         document.getElementById('busca').addEventListener('input', this.renderizar.bind(this));
         document.getElementById('filtro-status').addEventListener('change', this.renderizar.bind(this));
         document.getElementById('filtro-prioridade').addEventListener('change', this.renderizar.bind(this));
+
+        const newCardButton = document.getElementById('new-card-btn');
+        if (newCardButton) {
+            newCardButton.addEventListener('click', () => {
+                if (!this.model.getColunas().length) {
+                    this.exibirToast(getTranslationSet().createColumnFirst, 'warning');
+                    this.controller.abrirModalColuna();
+                    return;
+                }
+
+                this.controller.abrirModalCartao(null, null);
+            });
+        }
 
         // Alternância de tema
         const themeToggleButton = document.getElementById('theme-toggle');
@@ -493,6 +594,17 @@ class KanbanView {
 
         let colunas = this.model.getColunas();
         colunas.sort((a, b) => a.order - b.order);
+        const stats = this.model.getEstatisticas();
+
+        this.atualizarResumoPrincipal(colunas, stats);
+        this.atualizarEstadoAcoes(colunas.length > 0);
+        this.atualizarSelectColunas(colunas);
+
+        if (!colunas.length) {
+            this.kanbanBoard.innerHTML = this.criarEstadoVazio();
+            this.registrarAcoesEstadoVazio();
+            return;
+        }
 
         // Renderizar colunas
         colunas.forEach(coluna => {
@@ -526,11 +638,64 @@ class KanbanView {
             this.kanbanBoard.appendChild(colunaEl);
         });
 
-        // Atualizar select de colunas
-        this.atualizarSelectColunas(colunas);
-
         // Habilitar drag and drop
         this.habilitarDragAndDrop();
+    }
+
+    /**
+     * Atualiza os indicadores principais da tela
+     * @param {Array} colunas Lista de colunas
+     * @param {Object} stats Estatísticas do quadro
+     */
+    atualizarResumoPrincipal(colunas, stats) {
+        document.getElementById('summary-columns').textContent = colunas.length;
+        document.getElementById('summary-active').textContent = stats.ativos;
+        document.getElementById('summary-overdue').textContent = stats.atrasados;
+    }
+
+    /**
+     * Habilita ou desabilita ações que dependem da existência de colunas
+     * @param {Boolean} temColunas Se o quadro já possui colunas
+     */
+    atualizarEstadoAcoes(temColunas) {
+        const newCardButton = document.getElementById('new-card-btn');
+        if (!newCardButton) return;
+
+        newCardButton.disabled = !temColunas;
+        newCardButton.title = temColunas ? '' : getTranslationSet().createColumnFirst;
+    }
+
+    /**
+     * Cria o markup do estado vazio
+     * @returns {String} HTML do estado vazio
+     */
+    criarEstadoVazio() {
+        const t = getTranslationSet();
+
+        return `
+            <section class="empty-state">
+                <span class="empty-state-eyebrow">${t.emptyEyebrow}</span>
+                <h2>${t.emptyTitle}</h2>
+                <p>${t.emptyDescription}</p>
+                <div class="empty-state-actions">
+                    <button type="button" class="btn btn-light" id="empty-load-template">${t.loadTemplate}</button>
+                    <button type="button" class="btn btn-outline-light" id="empty-add-column">${t.newColumn}</button>
+                </div>
+            </section>
+        `;
+    }
+
+    /**
+     * Registra ações do estado vazio
+     */
+    registrarAcoesEstadoVazio() {
+        document.getElementById('empty-load-template')?.addEventListener('click', () => {
+            this.controller.criarQuadroInicial();
+        });
+
+        document.getElementById('empty-add-column')?.addEventListener('click', () => {
+            this.controller.abrirModalColuna();
+        });
     }
 
     /**
@@ -587,6 +752,7 @@ class KanbanView {
      * @returns {HTMLElement} Elemento do cartão
      */
     criarElementoCartao(cartao, colunaId) {
+        const t = getTranslationSet();
         const div = document.createElement('div');
         div.className = `trello-card ${this.getCardColorClass(cartao)}`;
         div.setAttribute('data-card-id', cartao.id);
@@ -601,7 +767,7 @@ class KanbanView {
 
         const statusBadge = document.createElement('span');
         statusBadge.className = `badge bg-${this.getStatusClass(cartao.status)}`;
-        statusBadge.textContent = cartao.status;
+        statusBadge.textContent = this.getStatusLabel(cartao.status);
 
         header.appendChild(title);
         header.appendChild(statusBadge);
@@ -636,7 +802,7 @@ class KanbanView {
         priorityBadge.className = 'mt-2';
         priorityBadge.innerHTML = `
             <span class="badge priority-${cartao.priority?.toLowerCase() || 'medium'}">
-                ${cartao.priority || 'Média'}
+                ${this.getPriorityLabel(cartao.priority || 'Média')}
             </span>
         `;
         div.appendChild(priorityBadge);
@@ -648,13 +814,15 @@ class KanbanView {
 
             const prazoDate = new Date(cartao.prazo);
             const today = new Date();
+            prazoDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
             const isAtrasado = prazoDate < today && cartao.status !== 'Concluído';
 
             prazo.innerHTML = `
                 <i class="fas fa-calendar-alt me-1"></i>
                 <span class="${isAtrasado ? 'text-danger' : ''}">
                     ${this.formatarData(cartao.prazo)}
-                    ${isAtrasado ? ' (Atrasado)' : ''}
+                    ${isAtrasado ? ` (${t.overdueShort})` : ''}
                 </span>
             `;
             div.appendChild(prazo);
@@ -665,7 +833,7 @@ class KanbanView {
             const link = document.createElement('div');
             link.className = 'mt-2';
             link.innerHTML = `<a href="${cartao.link}" target="_blank" class="btn btn-sm btn-outline-info">
-                <i class="fas fa-external-link-alt"></i> Visitar
+                <i class="fas fa-external-link-alt"></i> ${t.visit}
             </a>`;
             div.appendChild(link);
         }
@@ -728,9 +896,48 @@ class KanbanView {
         const prioridadeMap = {
             'Alta': 'red',
             'Média': 'orange',
-            'Baixa': 'green'
+            'Baixa': 'green',
+            High: 'red',
+            Medium: 'orange',
+            Low: 'green'
         };
         return prioridadeMap[cartao.priority] || 'blue';
+    }
+
+    /**
+     * Traduz a exibição do status do cartão
+     * @param {String} status Status salvo
+     * @returns {String} Status localizado
+     */
+    getStatusLabel(status) {
+        const t = getTranslationSet();
+        const labels = {
+            'Em andamento': t.inProgress,
+            'Concluído': t.done,
+            Aguardando: t.waiting,
+            Rejeitado: t.rejected
+        };
+
+        return labels[status] || status;
+    }
+
+    /**
+     * Traduz a prioridade do cartão
+     * @param {String} prioridade Prioridade salva
+     * @returns {String} Prioridade localizada
+     */
+    getPriorityLabel(prioridade) {
+        const t = getTranslationSet();
+        const labels = {
+            Alta: t.high,
+            Média: t.medium,
+            Baixa: t.low,
+            High: t.high,
+            Medium: t.medium,
+            Low: t.low
+        };
+
+        return labels[prioridade] || prioridade;
     }
 
     /**
@@ -758,7 +965,7 @@ class KanbanView {
     formatarData(dateStr) {
         if (!dateStr) return '';
         const date = new Date(dateStr);
-        return date.toLocaleDateString('pt-BR');
+        return date.toLocaleDateString(getLocaleForCalendar());
     }
 
     /**
@@ -835,6 +1042,7 @@ class KanbanView {
      * @param {Object|null} coluna Dados da coluna ou null para nova coluna
      */
     abrirModalColuna(coluna = null) {
+        const t = getTranslationSet();
         const idInput = document.getElementById('coluna-id');
         const nomeInput = document.getElementById('nome-coluna');
         const corInput = document.getElementById('cor-coluna');
@@ -849,11 +1057,11 @@ class KanbanView {
             idInput.value = coluna.id;
             nomeInput.value = coluna.name;
             corInput.value = coluna.color || '#2563eb';
-            modalTitle.textContent = 'Editar Coluna';
+            modalTitle.textContent = t.editColumn;
         } else {
             // Modo de criação
             idInput.value = '';
-            modalTitle.textContent = 'Nova Coluna';
+            modalTitle.textContent = t.newColumn;
         }
 
         // Abrir modal
@@ -867,7 +1075,9 @@ class KanbanView {
      * @param {Number} colunaId ID da coluna para novo cartão
      */
     abrirModalCartao(cartao = null, colunaId = null) {
+        const t = getTranslationSet();
         const idInput = document.getElementById('modal-cartao-id');
+        const colunaOriginalInput = document.getElementById('modal-cartao-coluna-original-id');
         const tituloInput = document.getElementById('modal-cartao-titulo');
         const descricaoInput = document.getElementById('modal-cartao-descricao');
         const statusSelect = document.getElementById('modal-cartao-status');
@@ -881,6 +1091,11 @@ class KanbanView {
         const modal = document.getElementById('modalCartao');
         const modalTitle = modal.querySelector('.modal-title');
 
+        if (!this.model.getColunas().length) {
+            this.exibirToast(t.createColumnFirst, 'warning');
+            return;
+        }
+
         // Limpar formulário e checklist
         document.getElementById('form-modal-cartao').reset();
         checklistContainer.innerHTML = '';
@@ -888,6 +1103,7 @@ class KanbanView {
         if (cartao) {
             // Modo de edição
             idInput.value = cartao.id;
+            colunaOriginalInput.value = colunaId;
             tituloInput.value = cartao.title || '';
             descricaoInput.value = cartao.description || '';
             statusSelect.value = cartao.status || 'Em andamento';
@@ -905,12 +1121,14 @@ class KanbanView {
                 });
             }
 
-            modalTitle.textContent = 'Editar Cartão';
+            modalTitle.textContent = t.editCard;
         } else {
             // Modo de criação
             idInput.value = '';
-            colunaSelect.value = colunaId || '';
-            modalTitle.textContent = 'Novo Cartão';
+            colunaOriginalInput.value = colunaId || '';
+            colunaSelect.value = colunaId || this.model.getColunas()[0]?.id || '';
+            linkInput.value = '';
+            modalTitle.textContent = t.newCard;
         }
 
         // Abrir modal
@@ -1040,7 +1258,7 @@ class KanbanView {
         // Inicializar calendário
         window.calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
-            locale: 'pt-br',
+            locale: getFullCalendarLocale(),
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
@@ -1194,6 +1412,20 @@ class KanbanController {
     }
 
     /**
+     * Cria um quadro inicial para o primeiro uso
+     * @returns {Boolean} Se o quadro foi criado
+     */
+    criarQuadroInicial() {
+        const sucesso = this.model.criarQuadroInicial();
+
+        if (sucesso) {
+            this.view.exibirToast(getTranslationSet().templateLoaded, 'success');
+        }
+
+        return sucesso;
+    }
+
+    /**
      * Confirma e remove uma coluna
      * @param {Number} id ID da coluna
      */
@@ -1247,8 +1479,8 @@ class KanbanController {
      * @param {Number} cartaoId ID do cartão
      * @param {Object} cartao Novos dados
      */
-    editarCartao(colunaId, cartaoId, cartao) {
-        const sucesso = this.model.editarCartao(colunaId, cartaoId, cartao);
+    editarCartao(colunaOrigemId, cartaoId, cartao, colunaDestinoId = colunaOrigemId) {
+        const sucesso = this.model.editarCartao(colunaOrigemId, cartaoId, cartao, colunaDestinoId);
 
         if (sucesso) {
             this.view.exibirToast(`Cartão atualizado com sucesso!`, 'success');
@@ -1385,6 +1617,12 @@ class KanbanController {
      * @param {Number} colunaId ID da coluna
      */
     abrirModalCartao(cartaoId = null, colunaId = null) {
+        if (!this.model.getColunas().length) {
+            this.view.exibirToast(getTranslationSet().createColumnFirst, 'warning');
+            this.abrirModalColuna();
+            return;
+        }
+
         if (cartaoId) {
             const colunas = this.model.getColunas();
             const coluna = colunas.find(c => c.id === colunaId);
@@ -1462,35 +1700,21 @@ class KanbanController {
     }
 }
 
-// Inicialização da aplicação
-const model = new KanbanModel();
-let controller, view;
-view = new KanbanView(model, null);
-controller = new KanbanController(model, view);
-view.controller = controller;
-// Exportar controller para uso global
-window.controller = controller;
-controller.inicializar();
-// Funções globais para uso em eventos HTML
-window.exportarKanban = () => controller.exportar();
-window.importarKanban = (event) => controller.importar(event);
-// Configuração de listeners para modais
-document.getElementById('dashboardModal').addEventListener('shown.bs.modal', () => {
-    controller.atualizarDashboard();
-});
-document.getElementById('calendarModal').addEventListener('shown.bs.modal', () => {
-    controller.atualizarCalendario();
-});
-// Função global para exibir toast - utilidade para debugging
-window.toast = (msg, type) => view.exibirToast(msg, type);
+let model;
+let controller;
+let view;
 
 // ===== Internacionalização =====
 const translations = {
     pt: {
-        title: 'Gerenciador de Airdrops',
-        pro: 'Pro',
+        brandBadge: 'Local-first',
+        kicker: 'Fluxo local para acompanhar airdrops',
+        subtitle: 'Organize oportunidades, tarefas e prazos em um quadro simples salvo no próprio navegador.',
         dashboard: 'Dashboard',
         calendar: 'Calendário',
+        summaryColumns: 'Colunas ativas',
+        summaryActive: 'Cards ativos',
+        summaryOverdue: 'Atrasados',
         search: 'Buscar...',
         status: 'Status',
         inProgress: 'Em andamento',
@@ -1522,18 +1746,33 @@ const translations = {
         cardPriority: 'Prioridade',
         cardDue: 'Prazo',
         cardLink: 'Link do Projeto',
+        cardLinkPlaceholder: 'https://projeto.xyz',
         cardTags: 'Tags (separadas por vírgula)',
         checklist: 'Checklist',
         newTask: 'Nova tarefa...',
         notes: 'Observações',
+        emptyEyebrow: 'Comece pelo fluxo',
+        emptyTitle: 'Monte seu primeiro pipeline de airdrops',
+        emptyDescription: 'Crie colunas para descoberta, validação e execução ou carregue um quadro inicial com um clique.',
+        loadTemplate: 'Usar modelo inicial',
+        createColumnFirst: 'Crie uma coluna antes de adicionar cartões.',
+        templateLoaded: 'Modelo inicial criado com sucesso!',
+        editColumn: 'Editar Coluna',
+        editCard: 'Editar Cartão',
+        visit: 'Visitar',
+        overdueShort: 'Atrasado',
         import: 'Importar',
-        export: 'Exportar',
+        export: 'Exportar'
     },
     en: {
-        title: 'Airdrops Manager',
-        pro: 'Pro',
+        brandBadge: 'Local-first',
+        kicker: 'Local workflow for tracking airdrops',
+        subtitle: 'Organize opportunities, tasks and deadlines in a simple board saved directly in your browser.',
         dashboard: 'Dashboard',
         calendar: 'Calendar',
+        summaryColumns: 'Active columns',
+        summaryActive: 'Active cards',
+        summaryOverdue: 'Overdue',
         search: 'Search...',
         status: 'Status',
         inProgress: 'In progress',
@@ -1565,18 +1804,33 @@ const translations = {
         cardPriority: 'Priority',
         cardDue: 'Due Date',
         cardLink: 'Project Link',
+        cardLinkPlaceholder: 'https://project.xyz',
         cardTags: 'Tags (comma separated)',
         checklist: 'Checklist',
         newTask: 'New task...',
         notes: 'Notes',
+        emptyEyebrow: 'Start with the flow',
+        emptyTitle: 'Build your first airdrop pipeline',
+        emptyDescription: 'Create columns for discovery, validation and execution or load a starter board with one click.',
+        loadTemplate: 'Use starter board',
+        createColumnFirst: 'Create a column before adding cards.',
+        templateLoaded: 'Starter board created successfully!',
+        editColumn: 'Edit Column',
+        editCard: 'Edit Card',
+        visit: 'Open',
+        overdueShort: 'Overdue',
         import: 'Import',
-        export: 'Export',
+        export: 'Export'
     },
     es: {
-        title: 'Gestor de Airdrops',
-        pro: 'Pro',
+        brandBadge: 'Local-first',
+        kicker: 'Flujo local para seguir airdrops',
+        subtitle: 'Organiza oportunidades, tareas y plazos en un tablero simple guardado directamente en tu navegador.',
         dashboard: 'Panel',
         calendar: 'Calendario',
+        summaryColumns: 'Columnas activas',
+        summaryActive: 'Tarjetas activas',
+        summaryOverdue: 'Atrasadas',
         search: 'Buscar...',
         status: 'Estado',
         inProgress: 'En progreso',
@@ -1608,18 +1862,33 @@ const translations = {
         cardPriority: 'Prioridad',
         cardDue: 'Fecha Límite',
         cardLink: 'Enlace del Proyecto',
+        cardLinkPlaceholder: 'https://proyecto.xyz',
         cardTags: 'Etiquetas (separadas por coma)',
         checklist: 'Checklist',
         newTask: 'Nueva tarea...',
         notes: 'Notas',
+        emptyEyebrow: 'Empieza por el flujo',
+        emptyTitle: 'Crea tu primer pipeline de airdrops',
+        emptyDescription: 'Crea columnas para descubrimiento, validación y ejecución o carga un tablero inicial con un clic.',
+        loadTemplate: 'Usar tablero inicial',
+        createColumnFirst: 'Crea una columna antes de añadir tarjetas.',
+        templateLoaded: 'Tablero inicial creado con éxito.',
+        editColumn: 'Editar Columna',
+        editCard: 'Editar Tarjeta',
+        visit: 'Abrir',
+        overdueShort: 'Atrasada',
         import: 'Importar',
-        export: 'Exportar',
+        export: 'Exportar'
     },
     zh: {
-        title: '空投看板',
-        pro: '专业版',
+        brandBadge: '本地优先',
+        kicker: '用于跟踪空投的本地流程',
+        subtitle: '在浏览器中直接保存，用一个简单的看板组织机会、任务和截止日期。',
         dashboard: '仪表盘',
         calendar: '日历',
+        summaryColumns: '进行中的列',
+        summaryActive: '进行中的卡片',
+        summaryOverdue: '已逾期',
         search: '搜索...',
         status: '状态',
         inProgress: '进行中',
@@ -1651,12 +1920,23 @@ const translations = {
         cardPriority: '优先级',
         cardDue: '截止日期',
         cardLink: '项目链接',
+        cardLinkPlaceholder: 'https://project.xyz',
         cardTags: '标签（逗号分隔）',
         checklist: '清单',
         newTask: '新任务...',
         notes: '备注',
+        emptyEyebrow: '先定义流程',
+        emptyTitle: '创建你的第一个空投流程',
+        emptyDescription: '为发现、验证和执行创建列，或者一键加载初始看板。',
+        loadTemplate: '使用初始看板',
+        createColumnFirst: '请先创建一列再添加卡片。',
+        templateLoaded: '初始看板创建成功！',
+        editColumn: '编辑列',
+        editCard: '编辑卡片',
+        visit: '打开',
+        overdueShort: '逾期',
         import: '导入',
-        export: '导出',
+        export: '导出'
     }
 };
 
@@ -1668,24 +1948,68 @@ function setCurrentLang(lang) {
     localStorage.setItem('kanban-lang', lang);
 }
 
+function getTranslationSet() {
+    return translations[getCurrentLang()] || translations.pt;
+}
+
+function getLocaleForCalendar() {
+    const localeMap = {
+        pt: 'pt-BR',
+        en: 'en-US',
+        es: 'es-ES',
+        zh: 'zh-CN'
+    };
+
+    return localeMap[getCurrentLang()] || 'pt-BR';
+}
+
+function getFullCalendarLocale() {
+    const localeMap = {
+        pt: 'pt-br',
+        en: 'en',
+        es: 'es',
+        zh: 'zh-cn'
+    };
+
+    return localeMap[getCurrentLang()] || 'pt-br';
+}
+
 function translatePage() {
     const lang = getCurrentLang();
-    const t = translations[lang];
-    // Títulos principais
-    const titleEl = document.querySelector('h2');
-    if (titleEl) {
-        titleEl.childNodes[0].textContent = t.title + ' ';
-        const badge = titleEl.querySelector('.badge');
-        if (badge) badge.textContent = t.pro;
-    }
+    const t = getTranslationSet();
+
+    document.documentElement.lang = lang;
+    document.title = 'AirdropBoard';
+
+    const kicker = document.getElementById('app-kicker');
+    if (kicker) kicker.textContent = t.kicker;
+
+    const subtitle = document.getElementById('main-subtitle');
+    if (subtitle) subtitle.textContent = t.subtitle;
+
+    const badge = document.getElementById('main-pro-badge');
+    if (badge) badge.textContent = t.brandBadge;
+
+    const summaryColumns = document.getElementById('summary-columns-label');
+    if (summaryColumns) summaryColumns.textContent = t.summaryColumns;
+
+    const summaryActive = document.getElementById('summary-active-label');
+    if (summaryActive) summaryActive.textContent = t.summaryActive;
+
+    const summaryOverdue = document.getElementById('summary-overdue-label');
+    if (summaryOverdue) summaryOverdue.textContent = t.summaryOverdue;
+
     // Botões principais
-    const dashboardBtn = document.querySelector('button[data-bs-target="#dashboardModal"]');
+    const dashboardBtn = document.getElementById('dashboard-btn');
     if (dashboardBtn) dashboardBtn.innerHTML = `<i class="fas fa-chart-line"></i> ${t.dashboard}`;
-    const calendarBtn = document.querySelector('button[data-bs-target="#calendarModal"]');
+
+    const calendarBtn = document.getElementById('calendar-btn');
     if (calendarBtn) calendarBtn.innerHTML = `<i class="fas fa-calendar-alt"></i> ${t.calendar}`;
+
     // Filtros
     const searchInput = document.getElementById('busca');
     if (searchInput) searchInput.placeholder = t.search;
+
     const statusSelect = document.getElementById('filtro-status');
     if (statusSelect) {
         statusSelect.options[0].text = t.status;
@@ -1701,18 +2025,26 @@ function translatePage() {
         prioritySelect.options[2].text = t.medium;
         prioritySelect.options[3].text = t.low;
     }
+
     // Botões de coluna/cartão
-    const newColBtn = document.querySelector('button[data-bs-target="#modalColuna"]');
+    const newColBtn = document.getElementById('new-column-btn');
     if (newColBtn) newColBtn.innerHTML = `<i class="fas fa-plus"></i> ${t.newColumn}`;
-    const newCardBtn = document.querySelector('button[data-bs-target="#modalCartao"]');
+
+    const newCardBtn = document.getElementById('new-card-btn');
     if (newCardBtn) newCardBtn.innerHTML = `<i class="fas fa-plus"></i> ${t.newCard}`;
+
     // Modal Coluna
     const modalColTitle = document.querySelector('#modalColuna .modal-title');
-    if (modalColTitle) modalColTitle.textContent = t.newColumn;
+    if (modalColTitle) {
+        modalColTitle.textContent = document.getElementById('coluna-id')?.value ? t.editColumn : t.newColumn;
+    }
+
     const colNameLabel = document.querySelector('label[for="nome-coluna"]');
     if (colNameLabel) colNameLabel.textContent = t.columnName;
+
     const colColorLabel = document.querySelector('label[for="cor-coluna"]');
     if (colColorLabel) colColorLabel.textContent = t.columnColor;
+
     const colColorSelect = document.getElementById('cor-coluna');
     if (colColorSelect) {
         colColorSelect.options[0].text = t.blue;
@@ -1723,73 +2055,109 @@ function translatePage() {
         colColorSelect.options[5].text = t.cyan;
         colColorSelect.options[6].text = t.gray;
     }
+
     const colSaveBtn = document.querySelector('#form-coluna button[type="submit"]');
     if (colSaveBtn) colSaveBtn.textContent = t.save;
+
     // Modal Cartão
     const modalCardTitle = document.getElementById('modalCartaoLabel');
-    if (modalCardTitle) modalCardTitle.textContent = t.newCard;
+    if (modalCardTitle) {
+        modalCardTitle.textContent = document.getElementById('modal-cartao-id')?.value ? t.editCard : t.newCard;
+    }
+
     const cardTitleLabel = document.querySelector('label[for="modal-cartao-titulo"]');
     if (cardTitleLabel) cardTitleLabel.textContent = t.cardTitle;
+
     const cardColLabel = document.querySelector('label[for="modal-cartao-coluna-id"]');
     if (cardColLabel) cardColLabel.textContent = t.cardColumn;
+
     const cardDescLabel = document.querySelector('label[for="modal-cartao-descricao"]');
     if (cardDescLabel) cardDescLabel.textContent = t.cardDescription;
+
     const cardStatusLabel = document.querySelector('label[for="modal-cartao-status"]');
     if (cardStatusLabel) cardStatusLabel.textContent = t.cardStatus;
+
     const cardPriorityLabel = document.querySelector('label[for="modal-cartao-prioridade"]');
     if (cardPriorityLabel) cardPriorityLabel.textContent = t.cardPriority;
+
     const cardDueLabel = document.querySelector('label[for="modal-cartao-prazo"]');
     if (cardDueLabel) cardDueLabel.textContent = t.cardDue;
+
     const cardLinkLabel = document.querySelector('label[for="modal-cartao-link"]');
     if (cardLinkLabel) cardLinkLabel.textContent = t.cardLink;
+
+    const cardLinkInput = document.getElementById('modal-cartao-link');
+    if (cardLinkInput) cardLinkInput.placeholder = t.cardLinkPlaceholder;
+
     const cardTagsLabel = document.querySelector('label[for="modal-cartao-tags"]');
     if (cardTagsLabel) cardTagsLabel.textContent = t.cardTags;
+
     const checklistLabel = document.querySelector('#checklist-container')?.previousElementSibling;
     if (checklistLabel) checklistLabel.textContent = t.checklist;
+
     const newTaskInput = document.getElementById('novo-checklist-item');
     if (newTaskInput) newTaskInput.placeholder = t.newTask;
+
     const notesLabel = document.querySelector('label[for="modal-cartao-obs"]');
     if (notesLabel) notesLabel.textContent = t.notes;
+
     // Botões de ação do modal cartão
     const cardCancelBtn = document.querySelector('#form-modal-cartao button.btn-outline-secondary');
     if (cardCancelBtn) cardCancelBtn.textContent = t.cancel;
+
     const cardSaveBtn = document.querySelector('#form-modal-cartao button.btn-success');
     if (cardSaveBtn) cardSaveBtn.textContent = t.save;
 }
 
+function initializeApplication() {
+    model = new KanbanModel();
+    view = new KanbanView(model, null);
+    controller = new KanbanController(model, view);
+    view.controller = controller;
+
+    window.controller = controller;
+    window.exportarKanban = () => controller.exportar();
+    window.importarKanban = (event) => controller.importar(event);
+    window.toast = (msg, type) => view.exibirToast(msg, type);
+
+    document.getElementById('dashboardModal').addEventListener('shown.bs.modal', () => {
+        controller.atualizarDashboard();
+    });
+
+    document.getElementById('calendarModal').addEventListener('shown.bs.modal', () => {
+        controller.atualizarCalendario();
+    });
+
+    controller.inicializar();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Novo seletor de idioma minimalista (inline)
-    const langSwitcher = document.querySelector('.language-switcher-inline');
+    initializeApplication();
+
+    const langSwitcher = document.getElementById('language-switcher-inline');
     const lang = getCurrentLang();
+
     if (langSwitcher) {
         const btns = langSwitcher.querySelectorAll('.lang-btn');
         btns.forEach(btn => {
             if (btn.dataset.lang === lang) btn.classList.add('active');
-            btn.addEventListener('click', (e) => {
+
+            btn.addEventListener('click', () => {
                 btns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 setCurrentLang(btn.dataset.lang);
                 translatePage();
+
+                if (window.controller) {
+                    window.controller.view.renderizar();
+                }
             });
         });
     }
-    // Suporte ao seletor antigo (caso ainda exista)
-    const langSelect = document.getElementById('language-select');
-    if (langSelect) langSelect.value = lang;
+
     translatePage();
-    if (langSelect) {
-        langSelect.addEventListener('change', (e) => {
-            setCurrentLang(e.target.value);
-            translatePage();
-        });
-    }
-    // Corrigir botão de novo cartão para abrir o modal corretamente
-    const newCardBtn = document.getElementById('new-card-btn');
-    if (newCardBtn) {
-        newCardBtn.addEventListener('click', () => {
-            if (window.controller && typeof window.controller.abrirModalCartao === 'function') {
-                window.controller.abrirModalCartao(null, null);
-            }
-        });
+
+    if (window.controller) {
+        window.controller.view.renderizar();
     }
 });

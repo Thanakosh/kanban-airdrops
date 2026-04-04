@@ -1,49 +1,65 @@
-# AirdropBoard: Seu Gerenciador de Airdrops Kanban
+# AirdropBoard
 
 ![AirdropBoard Logo](input_file_0.png)
 
-A **AirdropBoard** é uma aplicação web de código aberto projetada para ajudar entusiastas de criptomoedas a gerenciar e rastrear suas participações em airdrops de forma visual e intuitiva, utilizando o método Kanban.
+O **AirdropBoard** é um quadro Kanban local-first para acompanhar oportunidades de airdrop, tarefas e prazos sem depender de backend. Tudo fica salvo no `localStorage` do navegador.
 
-Com uma interface limpa e funcionalidades robustas, você pode organizar todas as suas atividades de airdrop, desde a descoberta até a conclusão, garantindo que você nunca perca uma oportunidade.
+## O que o app faz
 
-## ✨ Funcionalidades Principais
+- Organiza oportunidades em colunas personalizáveis.
+- Cria cartões com descrição, prioridade, prazo, link, tags e checklist.
+- Filtra por texto, status e prioridade.
+- Mostra dashboard com estatísticas e calendário de prazos.
+- Exporta e importa dados em JSON.
+- Suporta tema claro/escuro e interface multilíngue.
 
-- **Quadro Kanban Intuitivo:** Organize seus airdrops em colunas personalizáveis (ex: "A Fazer", "Em Andamento", "Concluído").
-- **Cartões Detalhados:** Adicione informações essenciais a cada airdrop, como título, descrição, prazo, link do projeto, tags e checklists.
-- **Filtros e Busca:** Encontre rapidamente qualquer airdrop com a funcionalidade de busca e filtros por status ou prioridade.
-- **Dashboard de Estatísticas:** Visualize o progresso com gráficos que mostram a distribuição de airdrops por status e prioridade.
-- **Calendário de Prazos:** Acompanhe as datas importantes e nunca perca um prazo com a visualização em calendário.
-- **Importação e Exportação:** Faça backup e restaure seus dados facilmente com as funções de exportar e importar em formato JSON.
-- **Tema Claro e Escuro:** Alterne entre os modos de visualização para maior conforto visual.
-- **Suporte Multilíngue:** Interface disponível em Português, Inglês, Espanhol e Chinês.
-- **Persistência Local:** Todos os seus dados são salvos diretamente no seu navegador usando `localStorage`, garantindo privacidade e acesso offline.
+## Melhorias do MVP atual
 
-## 🚀 Como Usar
+- Estado vazio com ação clara para começar o quadro.
+- Modelo inicial de colunas para o primeiro uso.
+- Resumo do workspace já na tela principal.
+- Fluxo de edição de cartão corrigido, incluindo troca de coluna pelo modal.
+- Link de projeto tratado corretamente quando o campo fica vazio.
 
-Como a aplicação é totalmente baseada em frontend e salva os dados localmente, não há necessidade de instalação. Basta abrir o arquivo `index.html` em seu navegador de preferência.
+## Como executar
 
-1.  **Clone o repositório:**
-    ```bash
-    git clone https://github.com/Thanakosh/kanban-airdrops.git
-    ```
-2.  **Abra o arquivo:**
-    Navegue até a pasta do projeto e abra o arquivo `index.html` no seu navegador.
+Como é um projeto estático, você pode abrir o `index.html` direto no navegador. Para servir localmente:
 
-## 🛠️ Tecnologias Utilizadas
+```bash
+npm start
+```
 
-- **HTML5**
-- **CSS3**
-- **JavaScript (Vanilla)**
-- **Bootstrap 5** para a interface e componentes.
-- **Font Awesome** para os ícones.
-- **Chart.js** para os gráficos do dashboard.
-- **FullCalendar** para a visualização em calendário.
+Isso executa:
 
-## 🤝 Como Contribuir
+```bash
+python -m http.server 8000
+```
 
-Contribuições são bem-vindas! Se você tem ideias para novas funcionalidades, melhorias ou encontrou algum bug, sinta-se à vontade para abrir uma **Issue** ou enviar um **Pull Request**.
+Depois abra `http://localhost:8000`.
 
-## 📄 Licença
+## Stack
 
-Este projeto é distribuído sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+- HTML
+- CSS
+- JavaScript vanilla
+- Bootstrap 5
+- Font Awesome
+- Chart.js
+- FullCalendar
 
+## Estrutura principal
+
+- `index.html`: estrutura da interface
+- `style.css`: visual principal do app
+- `kanban.js`: modelo, view, controller e i18n
+- `config.js`, `utils.js`, `notifications.js`: suporte e utilidades
+
+## Observações
+
+- Os dados são locais ao navegador e ao dispositivo.
+- Exporte o JSON periodicamente se quiser backup manual.
+- Ainda não há suíte automatizada de testes.
+
+## Licença
+
+MIT. Veja [`LICENSE`](LICENSE).
